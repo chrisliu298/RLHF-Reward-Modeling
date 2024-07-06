@@ -11,6 +11,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from datasets import load_dataset
+
 # from peft import LoraConfig, TaskType, get_peft_model
 from transformers import (
     AutoModelForSequenceClassification,
@@ -20,8 +21,6 @@ from transformers import (
     TrainingArguments,
 )
 from transformers.utils import PaddingStrategy
-
-
 
 
 # Define and parse arguments.
@@ -47,7 +46,7 @@ class ScriptArguments:
     learning_rate: Optional[float] = field(default=5e-6)
     weight_decay: Optional[float] = field(default=0.001)
     model_name: Optional[str] = field(
-        default="mistralai/Mistral-7B-Instruct-v0.2",
+        default="mistralai/Mistral-7B-Instruct-v0.3",
         metadata={
             "help": "The model that you want to train from the Hugging Face hub. E.g. gpt2, gpt2-xl, bert, etc."
         },
