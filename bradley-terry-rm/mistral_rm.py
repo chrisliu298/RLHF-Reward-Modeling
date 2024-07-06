@@ -46,7 +46,7 @@ class ScriptArguments:
     learning_rate: Optional[float] = field(default=5e-6)
     weight_decay: Optional[float] = field(default=0.001)
     model_name: Optional[str] = field(
-        default="mistralai/Mistral-7B-Instruct-v0.3",
+        default="mistralai/Mistral-7B-Instruct-v0.2",
         metadata={
             "help": "The model that you want to train from the Hugging Face hub. E.g. gpt2, gpt2-xl, bert, etc."
         },
