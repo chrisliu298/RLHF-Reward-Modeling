@@ -105,7 +105,7 @@ script_args = parser.parse_args_into_dataclasses()[0]
 
 # Load the value-head model and tokenizer.
 tokenizer_name = script_args.model_name
-tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast = False)
+tokenizer = AutoTokenizer.from_pretrained("HuggingFaceH4/zephyr-7b-beta", use_fast = False)
 
 # Adjusted according to the base model
 # Need to do this for the models that don't have an official pad token.
