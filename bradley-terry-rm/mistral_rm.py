@@ -29,12 +29,14 @@ class ScriptArguments:
     """
     These arguments vary depending on how many GPUs you have, what their capacity and features are, and what size model you want to train.
     """
+
     local_rank: Optional[int] = field(
-        default=-1, metadata={"help": "Used for multi-gpu"})
+        default=-1, metadata={"help": "Used for multi-gpu"}
+    )
 
     deepspeed: Optional[str] = field(
         # default="dp3.json",
-        #default="dp1.json",
+        # default="dp1.json",
         default=None,
         metadata={
             "help": "Path to deepspeed config if using deepspeed. You may need this if the model that you want to train doesn't fit on a single GPU."
@@ -62,11 +64,11 @@ class ScriptArguments:
         metadata={"help": "The number of training epochs for the reward model."},
     )
     train_set_path: Optional[str] = field(
-        default="weqweasdas/preference_dataset_mix2",
+        default="hendrydong/preference_700K",
         metadata={"help": "The dir of the subset of the training data to use"},
     )
     eval_set_path: Optional[str] = field(
-        default="weqweasdas/preference_dataset_mix2",
+        default="hendrydong/preference_700K",
         metadata={"help": "The dir of the subset of the eval data to use"},
     )
     output_path: Optional[str] = field(
@@ -104,19 +106,18 @@ script_args = parser.parse_args_into_dataclasses()[0]
 
 # Load the value-head model and tokenizer.
 tokenizer_name = script_args.model_name
-tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast = False)
+tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=False)
 
 # Adjusted according to the base model
 # Need to do this for the models that don't have an official pad token.
-#tokenizer.pad_token = tokenizer.eos_token
-#tokenizer.pad_token_id = tokenizer.eos_token_id
-tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+# tokenizer.pad_token = tokenizer.eos_token
+# tokenizer.pad_token_id = tokenizer.eos_token_id
+tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 print(tokenizer.padding_side)
 tokenizer.truncation_side = "left"
 tokenizer.model_max_length = script_args.max_length
 # tokenizer.padding_side = "right"
 ###
-
 
 
 # Get the dataset
@@ -128,12 +129,14 @@ output_name = script_args.output_path
 def build_dataset(tokenizer, train_path, eval_path):
 
     def tokenize(sample):
-        sample['positive'] = tokenizer.apply_chat_template(
-            sample['chosen'], tokenize=False, add_generation_prompt=False).replace(tokenizer.bos_token, "")
-        sample['negative'] = tokenizer.apply_chat_template(
-            sample['rejected'], tokenize=False, add_generation_prompt=False).replace(tokenizer.bos_token, "")
-        tokenized_pos = tokenizer(sample['positive'], truncation=True)
-        tokenized_neg = tokenizer(sample['negative'], truncation=True)
+        sample["positive"] = tokenizer.apply_chat_template(
+            sample["chosen"], tokenize=False, add_generation_prompt=False
+        ).replace(tokenizer.bos_token, "")
+        sample["negative"] = tokenizer.apply_chat_template(
+            sample["rejected"], tokenize=False, add_generation_prompt=False
+        ).replace(tokenizer.bos_token, "")
+        tokenized_pos = tokenizer(sample["positive"], truncation=True)
+        tokenized_neg = tokenizer(sample["negative"], truncation=True)
         sample["input_ids_j"] = tokenized_pos["input_ids"]
         sample["attention_mask_j"] = tokenized_pos["attention_mask"]
         sample["input_ids_k"] = tokenized_neg["input_ids"]
@@ -141,15 +144,15 @@ def build_dataset(tokenizer, train_path, eval_path):
         return sample
 
     ds = load_dataset(train_path, split="train").shuffle(seed=42)
-    #ds = ds.select(range(2000))
-    ds = ds.map(tokenize, num_proc=24)
+    # ds = ds.select(range(2000))
+    ds = ds.map(tokenize, num_proc=32)
 
     eval_dataset = None
 
     train_dataset = ds
-    #eval_dataset = load_dataset(eval_path, split="train").shuffle(seed=42).select(range(500))
+    # eval_dataset = load_dataset(eval_path, split="train").shuffle(seed=42).select(range(500))
     eval_dataset = ds.select(range(500))
-    eval_dataset = eval_dataset.map(tokenize, num_proc=24)
+    eval_dataset = eval_dataset.map(tokenize, num_proc=32)
     return train_dataset, eval_dataset
 
 
@@ -183,11 +186,14 @@ training_args = TrainingArguments(
     optim=script_args.optim,
     lr_scheduler_type=script_args.lr_scheduler_type,
     warmup_ratio=0.03,
-    report_to='wandb'
+    report_to="wandb",
 )
 
 model = AutoModelForSequenceClassification.from_pretrained(
-    script_args.model_name, num_labels=1, torch_dtype=torch.bfloat16, use_flash_attention_2=True,
+    script_args.model_name,
+    num_labels=1,
+    torch_dtype=torch.bfloat16,
+    use_flash_attention_2=True,
 )
 
 model.config.use_cache = not script_args.gradient_checkpointing
@@ -244,8 +250,9 @@ def compute_metrics(eval_pred):
     pos_predictions_scores = eval_pred.predictions[0]
     neg_predictions_scores = eval_pred.predictions[1]
     # We assume that the first sample is preferred by default in groundtruth
-    result['accuracy'] = np.sum(
-        pos_predictions_scores > neg_predictions_scores) / len(pos_predictions_scores)
+    result["accuracy"] = np.sum(pos_predictions_scores > neg_predictions_scores) / len(
+        pos_predictions_scores
+    )
     return result
 
 
@@ -273,7 +280,8 @@ trainer = RewardTrainer(
     eval_dataset=eval_dataset,
     compute_metrics=compute_metrics,
     data_collator=RewardDataCollatorWithPadding(
-        tokenizer=tokenizer, max_length=script_args.max_length),
+        tokenizer=tokenizer, max_length=script_args.max_length
+    ),
 )
 
 
@@ -281,6 +289,6 @@ trainer.train()
 
 
 print("Saving last checkpoint of the model")
-#model.save_pretrained(output_name + "/last_checkpoint")
+# model.save_pretrained(output_name + "/last_checkpoint")
 trainer.save_model(output_name + "/last_checkpoint")
 tokenizer.save_pretrained(output_name + "/last_checkpoint")
