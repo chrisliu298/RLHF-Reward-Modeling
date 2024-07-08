@@ -136,13 +136,13 @@ def build_dataset(tokenizer, train_path, eval_path):
     
     ds = load_dataset(train_path, split="train").shuffle(seed=42)
     #ds = ds.select(range(2000))
-    ds = ds.map(tokenize, num_proc=8)
+    ds = ds.map(tokenize, num_proc=24)
 
     eval_dataset = None
 
     train_dataset = ds
     eval_dataset = load_dataset(eval_path, split="train").shuffle(seed=42).select(range(500))
-    #eval_dataset = ds.select(range(500))
+    eval_dataset = eval_dataset.map(tokenize, num_proc=24)
     return train_dataset, eval_dataset
 
 
